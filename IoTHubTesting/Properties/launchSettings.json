@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "cirrusIQdeviceTwinETL": {
+      "commandName": "Project",
+      "commandLineArgs": "dev"
+    }
+  }
+}

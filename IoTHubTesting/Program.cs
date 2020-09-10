@@ -7,37 +7,47 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 
 namespace cirrusIQdeviceTwinETL
-
 {
+    public class FirmwareVersion
+    {
+        public string firmwareVersion { get; set; }
+    }
+    public class configuration
+    {
+        public string version { get; set; }
+    }
     class Program
     {
         static RegistryManager registryManager;
-        static string connectionString = "HostName=CIR-QA-CUS-IoTHub.azure-devices.net;SharedAccessKeyName=serviceAndRegistryRead;SharedAccessKey=ZknjEPrmtpqYUTSf47l7w8AL8RLL9//kfeLthRbFvyY=";
+        
         static void Main(string[] args)
         {
-            registryManager = RegistryManager.CreateFromConnectionString(connectionString);
-            performQueryAndPush().Wait();
+            string iothubConnectionString = null;
+            if (args[0] == "prod")
+            {
+                iothubConnectionString = "HostName=CIR-PRD-CUS-IoTHub.azure-devices.net;SharedAccessKeyName=serviceAndRegistryRead;SharedAccessKey=0/aPq49b1ayScssb+U8E2jBhzZGslS1lRac/C+yn2b0=";
+            } else
+            {
+                iothubConnectionString = "HostName=CIR-QA-CUS-IoTHub.azure-devices.net;SharedAccessKeyName=serviceAndRegistryRead;SharedAccessKey=ZknjEPrmtpqYUTSf47l7w8AL8RLL9//kfeLthRbFvyY=";
+            }
+            
+            registryManager = RegistryManager.CreateFromConnectionString(iothubConnectionString);
+            performQueryAndPush(args[0]).Wait();
             Console.WriteLine("Process is completed");
             //Console.ReadLine();
             //Console.WriteLine("Hello World!");
         }
 
-        public class FirmwareVersion
-        {
-            public string firmwareVersion { get; set; }
-        }
-        public class configuration
-        {
-            public string version { get; set; }
-        }
+        
 
-        public static async Task performQueryAndPush()
+        public static async Task performQueryAndPush(string environment)
         {
             var query = registryManager.CreateQuery("SELECT * FROM devices", 100);
             string firmwareVersionReported = null;
             string configurationVersionReported = null;
             string firmwareVersionDesired = null;
             string configurationVersionDesired = null;
+            string sqlConnectionString = null;
             while (query.HasMoreResults) {
                 var page = await query.GetNextAsTwinAsync();
                 foreach (var twin in page) {
@@ -75,7 +85,15 @@ namespace cirrusIQdeviceTwinETL
                     //}
                     //Console.WriteLine();
                     //Console.WriteLine();
-                    using (SqlConnection con = new SqlConnection("Server=tcp:azr-dev-cus-sqls-wdm.database.windows.net,1433;Initial Catalog=azr-dev-cus-sqls-cirrusiqops;Persist Security Info=False;User ID=cirrusiqmetrics;Password=Qb45!z#A9;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"))
+                    if (environment == "prod") {
+                        sqlConnectionString = "Server=tcp:azr-prd-cus-sqls.database.windows.net,1433;Initial Catalog=azr-prd-cus-sqls-cirrusiqops;Persist Security Info=False;User ID=cirrusiqmetrics;" +
+                                              "Password=Qb45!z#A9;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+                        
+                    } else {
+                        sqlConnectionString = "Server=tcp:azr-dev-cus-sqls-wdm.database.windows.net,1433;Initial Catalog=azr-dev-cus-sqls-cirrusiqops;Persist Security Info=False;User ID=cirrusiqmetrics;" +
+                                              "Password=Qb45!z#A9;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+                    }
+                    using (SqlConnection con = new SqlConnection(sqlConnectionString))
                     {
                         string deleteStatement = "DELETE FROM DeviceTwin where deviceId = '"+twin.DeviceId+"'";
                         using (SqlCommand command = new SqlCommand(deleteStatement, con))
