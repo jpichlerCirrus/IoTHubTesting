@@ -6,7 +6,8 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 
-namespace IoTHubTesting
+namespace cirrusIQdeviceTwinETL
+
 {
     class Program
     {
@@ -16,8 +17,8 @@ namespace IoTHubTesting
         {
             registryManager = RegistryManager.CreateFromConnectionString(connectionString);
             performQueryAndPush().Wait();
-            Console.WriteLine("Press Enter to exit.");
-            Console.ReadLine();
+            Console.WriteLine("Process is completed");
+            //Console.ReadLine();
             //Console.WriteLine("Hello World!");
         }
 
@@ -76,10 +77,18 @@ namespace IoTHubTesting
                     //Console.WriteLine();
                     using (SqlConnection con = new SqlConnection("Server=tcp:azr-dev-cus-sqls-wdm.database.windows.net,1433;Initial Catalog=azr-dev-cus-sqls-cirrusiqops;Persist Security Info=False;User ID=cirrusiqmetrics;Password=Qb45!z#A9;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"))
                     {
-                        String insertStatement = "INSERT INTO DeviceTwin (deviceId, reportedFirmware, reportedConfig, desiredFirmware, desiredConfig) VALUES ('"+twin.DeviceId+"','"+firmwareVersionReported+"','"+configurationVersionReported+"','"+firmwareVersionDesired+"','"+configurationVersionDesired+"')";
-                        using (SqlCommand command = new SqlCommand(insertStatement, con))
+                        string deleteStatement = "DELETE FROM DeviceTwin where deviceId = '"+twin.DeviceId+"'";
+                        using (SqlCommand command = new SqlCommand(deleteStatement, con))
                         {
                             con.Open();
+                            int deleteResult = command.ExecuteNonQuery();
+                            if (deleteResult < 0)
+                                Console.WriteLine("Error with the insert");
+
+                        }
+                        string insertStatement = "INSERT INTO DeviceTwin (deviceId, reportedFirmware, reportedConfig, desiredFirmware, desiredConfig) VALUES ('"+twin.DeviceId+"','"+firmwareVersionReported+"','"+configurationVersionReported+"','"+firmwareVersionDesired+"','"+configurationVersionDesired+"')";
+                        using (SqlCommand command = new SqlCommand(insertStatement, con))
+                        {
                             int insertResult = command.ExecuteNonQuery();
                             if (insertResult < 0)
                                 Console.WriteLine("Error with the insert");
